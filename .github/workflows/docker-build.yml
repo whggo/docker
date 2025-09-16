@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+env:
+  DOCKER_IMAGE_NAME: "two"
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -12,6 +15,11 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    - name: Debug - Show secrets availability
+      run: |
+        echo "DOCKERHUB_USERNAME is set: ${{ secrets.DOCKERHUB_USERNAME != '' }}"
+        echo "DOCKERHUB_TOKEN is set: ${{ secrets.DOCKERHUB_TOKEN != '' }}"
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -22,6 +30,10 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+    - name: Verify Docker login
+      run: |
+        docker info | grep "Username" || echo "Not logged in"
+
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
@@ -29,7 +41,11 @@ jobs:
         file: ./Dockerfile
         push: true
         tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/two:latest
-          ${{ secrets.DOCKERHUB_USERNAME }}/two:${{ github.sha }}
+          ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
         build-args: |
           CONFIG_URL=https://raw.githubusercontent.com/whggo/one-node/refs/heads/main/hugging-face/app/xy/config.json
+
+    - name: Verify push success
+      run: |
+        echo "Image pushed successfully to Docker Hub"
